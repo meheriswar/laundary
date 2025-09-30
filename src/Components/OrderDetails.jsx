@@ -1,341 +1,236 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { ToastContainer, toast } from "react-toastify";
+import { useNavigate, useLocation } from "react-router-dom";
+import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-// Reusable service data for dynamic rendering
 const serviceData = {
-  "wash-and-fold": { name: "Wash & Fold", defaultUnit: "kg" },
-  "dry-cleaning": { name: "Dry Cleaning", defaultUnit: "items" },
-  "ironing": { name: "Ironing", defaultUnit: "items" },
-};
-
-// Hardcoded pricing data in INR
-const pricingData = {
-  "wash-and-fold": { pricePerUnit: 150, unit: "kg" },
-  "dry-cleaning": { pricePerUnit: 500, unit: "items" },
-  "ironing": { pricePerUnit: 200, unit: "items" },
+  wash: { name: "Washing", pricePerUnit: 50 },
+  dry: { name: "Dry Cleaning", pricePerUnit: 100 },
+  iron: { name: "Ironing", pricePerUnit: 30 },
 };
 
 const OrderDetails = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const selectedServices = searchParams.get("services")?.split(",") || [];
+  const location = useLocation();
 
-  const [orderForms, setOrderForms] = useState(() => {
-    const initialForms = {};
-    selectedServices.forEach((id) => {
-      initialForms[id] = {
-        quantity: "",
-        unit: serviceData[id]?.defaultUnit || "items",
-        specialInstructions: "",
-      };
-    });
-    return initialForms;
-  });
-
+  const [selectedServices, setSelectedServices] = useState([]);
+  const [orderForms, setOrderForms] = useState({});
   const [addressData, setAddressData] = useState({
-    streetAddress: "",
+    street: "",
     city: "",
-    postalCode: "",
-    pickupDate: "",
-    pickupTime: "",
-    deliveryDate: "",
-    deliveryTime: "",
+    pincode: "",
   });
+  const [pickupTime, setPickupTime] = useState("");
+  const [deliveryTime, setDeliveryTime] = useState("");
 
+  // ✅ Auto-select service if passed via query param
   useEffect(() => {
-    if (!localStorage.getItem("user")) {
-      toast.error("Please log in to continue your order.");
-      navigate("/login");
-      return;
-    }
+    const params = new URLSearchParams(location.search);
+    const service = params.get("service");
 
-    if (selectedServices.length === 0) {
-      toast.error("No services selected. Please choose from the list.");
-      navigate("/service-selection");
+    if (service && serviceData[service]) {
+      setSelectedServices([service]);
+      setOrderForms({
+        [service]: { quantity: 1, unit: "kg", specialInstructions: "" },
+      });
     }
-  }, [selectedServices, navigate]);
+  }, [location.search]);
 
-  const handleFormChange = (serviceId, e) => {
-    const { name, value } = e.target;
-    setOrderForms((prevForms) => ({
-      ...prevForms,
-      [serviceId]: {
-        ...prevForms[serviceId],
-        [name]: value,
-      },
-    }));
+  const handleServiceSelect = (serviceId) => {
+    if (selectedServices.includes(serviceId)) {
+      setSelectedServices(selectedServices.filter((s) => s !== serviceId));
+      const updatedForms = { ...orderForms };
+      delete updatedForms[serviceId];
+      setOrderForms(updatedForms);
+    } else {
+      setSelectedServices([...selectedServices, serviceId]);
+      setOrderForms({
+        ...orderForms,
+        [serviceId]: { quantity: 1, unit: "kg", specialInstructions: "" },
+      });
+    }
+  };
+
+  const handleInputChange = (serviceId, field, value) => {
+    setOrderForms({
+      ...orderForms,
+      [serviceId]: { ...orderForms[serviceId], [field]: value },
+    });
   };
 
   const handleAddressChange = (e) => {
     setAddressData({ ...addressData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    const allFormsValid = selectedServices.every((id) => {
-      const form = orderForms[id];
-      const quantity = Number(form.quantity);
-      return !isNaN(quantity) && quantity > 0 && quantity <= 999;
-    });
-
-    const allAddressFieldsValid = Object.values(addressData).every((val) => val);
-
-    if (!allFormsValid) {
-      toast.error("Please enter valid quantities (1-999) for all services.");
+  const handleSubmit = () => {
+    if (selectedServices.length === 0) {
+      toast.error("Please select at least one service.");
       return;
     }
-
-    if (!allAddressFieldsValid) {
-      toast.error("Please fill in all address and timing fields.");
+    if (!addressData.street || !addressData.city || !addressData.pincode) {
+      toast.error("Please fill in the address details.");
+      return;
+    }
+    if (!pickupTime || !deliveryTime) {
+      toast.error("Please select pickup and delivery times.");
       return;
     }
 
     const order = {
-      services: orderForms,
+      services: selectedServices.map((id) => ({
+        name: serviceData[id]?.name,
+        quantity: orderForms[id].quantity,
+        unit: orderForms[id].unit,
+        instructions: orderForms[id].specialInstructions,
+        price: serviceData[id]?.pricePerUnit,
+      })),
       address: addressData,
+      pickupTime,
+      deliveryTime,
       status: "Pending",
       timestamp: new Date().toISOString(),
     };
 
-    localStorage.setItem("currentOrder", JSON.stringify(order));
-    toast.success("Order details saved! Proceeding to payment.");
-    navigate("/payment");
+    // Save to localStorage
+    const allOrders = JSON.parse(localStorage.getItem("allOrders")) || [];
+    allOrders.push(order);
+    localStorage.setItem("allOrders", JSON.stringify(allOrders));
+
+    // ✅ Redirect to payment page with order details
+    navigate("/payment", { state: { order } });
   };
-
+  
   return (
-    <div className="min-h-screen bg-gray-100 py-12">
+    <div className="min-h-screen bg-gray-100 p-6">
       <ToastContainer />
-      <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white shadow-xl rounded-xl p-8">
-          <h2 className="text-3xl font-extrabold text-center text-gray-900 mb-6">
-            Complete Your Order
-          </h2>
+      <div className="max-w-3xl mx-auto bg-white p-8 shadow-lg rounded-lg">
+        {/* Header with Back Button */}
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-blue-600">Order Details</h2>
+          <button
+            onClick={() => navigate(-1)}
+            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+          >
+            ← Back
+          </button>
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {selectedServices.map((serviceId) => (
-              <div key={serviceId} className="border-b border-gray-200 pb-6">
-                <h3 className="text-xl font-medium text-blue-600 mb-2">
-                  {serviceData[serviceId]?.name}
-                </h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  Price: ₹{pricingData[serviceId]?.pricePerUnit} per {pricingData[serviceId]?.unit}
-                </p>
-                <div className="space-y-4">
-                  <div>
-                    <label
-                      htmlFor={`quantity-${serviceId}`}
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Quantity *
-                    </label>
-                    <div className="mt-1 flex rounded-md shadow-sm">
-                      <input
-                        type="number"
-                        name="quantity"
-                        id={`quantity-${serviceId}`}
-                        value={orderForms[serviceId]?.quantity || ""}
-                        onChange={(e) => handleFormChange(serviceId, e)}
-                        placeholder="Enter quantity"
-                        min="1"
-                        step="1"
-                        className="flex-1 block w-full rounded-none rounded-l-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3"
-                        required
-                      />
-                      <select
-                        name="unit"
-                        value={orderForms[serviceId]?.unit || "items"}
-                        onChange={(e) => handleFormChange(serviceId, e)}
-                        className="rounded-r-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3"
-                      >
-                        <option value="kg">kg</option>
-                        <option value="items">items</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label
-                      htmlFor={`instructions-${serviceId}`}
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Special Instructions (optional)
-                    </label>
-                    <textarea
-                      name="specialInstructions"
-                      id={`instructions-${serviceId}`}
-                      rows="3"
-                      value={orderForms[serviceId]?.specialInstructions || ""}
-                      onChange={(e) => handleFormChange(serviceId, e)}
-                      placeholder="e.g., use fabric softener, starch shirts, etc."
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3"
-                    ></textarea>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            <hr className="border-gray-300" />
-
-            <div className="space-y-6">
-              <h3 className="text-xl font-medium text-gray-800">
-                Pickup & Delivery Details
-              </h3>
-
-              <div className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="streetAddress"
-                    className="block text-sm font-medium text-gray-700"
+        {/* Service Selection */}
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-3">Choose Services:</h3>
+          {Object.keys(serviceData).map((id) => (
+            <div key={id} className="mb-2">
+              <label className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  checked={selectedServices.includes(id)}
+                  onChange={() => handleServiceSelect(id)}
+                />
+                <span>
+                  {serviceData[id].name} - ₹{serviceData[id].pricePerUnit} per unit
+                </span>
+              </label>
+              {selectedServices.includes(id) && (
+                <div className="ml-6 mt-2 space-y-2">
+                  <input
+                    type="number"
+                    min="1"
+                    value={orderForms[id]?.quantity}
+                    onChange={(e) =>
+                      handleInputChange(id, "quantity", e.target.value)
+                    }
+                    className="border p-2 rounded w-20"
+                  />
+                  <select
+                    value={orderForms[id]?.unit}
+                    onChange={(e) =>
+                      handleInputChange(id, "unit", e.target.value)
+                    }
+                    className="border p-2 rounded"
                   >
-                    Street Address *
-                  </label>
+                    <option value="kg">Kg</option>
+                    <option value="pcs">Pieces</option>
+                  </select>
                   <input
                     type="text"
-                    name="streetAddress"
-                    id="streetAddress"
-                    value={addressData.streetAddress}
-                    onChange={handleAddressChange}
-                    placeholder="123 Main St"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3"
-                    required
+                    placeholder="Special Instructions"
+                    value={orderForms[id]?.specialInstructions}
+                    onChange={(e) =>
+                      handleInputChange(id, "specialInstructions", e.target.value)
+                    }
+                    className="border p-2 rounded w-64"
                   />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label
-                      htmlFor="city"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      City *
-                    </label>
-                    <input
-                      type="text"
-                      name="city"
-                      id="city"
-                      value={addressData.city}
-                      onChange={handleAddressChange}
-                      placeholder="New York"
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="postalCode"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Postal Code *
-                    </label>
-                    <input
-                      type="text"
-                      name="postalCode"
-                      id="postalCode"
-                      value={addressData.postalCode}
-                      onChange={handleAddressChange}
-                      placeholder="10001"
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label
-                    htmlFor="pickupDate"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Pickup Date *
-                  </label>
-                  <input
-                    type="date"
-                    name="pickupDate"
-                    id="pickupDate"
-                    value={addressData.pickupDate}
-                    onChange={handleAddressChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3"
-                    required
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="pickupTime"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Pickup Time *
-                  </label>
-                  <input
-                    type="time"
-                    name="pickupTime"
-                    id="pickupTime"
-                    value={addressData.pickupTime}
-                    onChange={handleAddressChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label
-                    htmlFor="deliveryDate"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Delivery Date *
-                  </label>
-                  <input
-                    type="date"
-                    name="deliveryDate"
-                    id="deliveryDate"
-                    value={addressData.deliveryDate}
-                    onChange={handleAddressChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3"
-                    required
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="deliveryTime"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Delivery Time *
-                  </label>
-                  <input
-                    type="time"
-                    name="deliveryTime"
-                    id="deliveryTime"
-                    value={addressData.deliveryTime}
-                    onChange={handleAddressChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3"
-                    required
-                  />
-                </div>
-              </div>
+              )}
             </div>
-
-            <div className="flex justify-between items-center pt-4">
-              <button
-                type="button"
-                onClick={() => navigate("/service-selection")}
-                className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 font-medium hover:bg-gray-50 transition"
-              >
-                Back
-              </button>
-              <button
-                type="submit"
-                className="px-6 py-2 bg-blue-600 text-white rounded-md font-semibold hover:bg-blue-700 transition"
-              >
-                Proceed to Payment
-              </button>
-            </div>
-          </form>
+          ))}
         </div>
+
+        {/* Address Section */}
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-3">Address Details:</h3>
+          <input
+            type="text"
+            name="street"
+            placeholder="Street"
+            value={addressData.street}
+            onChange={handleAddressChange}
+            className="border p-2 rounded w-full mb-2"
+          />
+          <input
+            type="text"
+            name="city"
+            placeholder="City"
+            value={addressData.city}
+            onChange={handleAddressChange}
+            className="border p-2 rounded w-full mb-2"
+          />
+          <input
+            type="text"
+            name="pincode"
+            placeholder="Pincode"
+            value={addressData.pincode}
+            onChange={handleAddressChange}
+            className="border p-2 rounded w-full"
+          />
+        </div>
+
+        {/* Pickup & Delivery Times */}
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-3">Pickup & Delivery Time:</h3>
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className="block mb-1">Pickup Time</label>
+              <input
+                type="datetime-local"
+                value={pickupTime}
+                onChange={(e) => setPickupTime(e.target.value)}
+                className="border p-2 rounded w-full"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block mb-1">Delivery Time</label>
+              <input
+                type="datetime-local"
+                value={deliveryTime}
+                onChange={(e) => setDeliveryTime(e.target.value)}
+                className="border p-2 rounded w-full"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Submit */}
+        <button
+          onClick={handleSubmit}
+          className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition"
+        >
+          Proceed to Payment
+        </button>
       </div>
     </div>
   );
 };
 
 export default OrderDetails;
+     

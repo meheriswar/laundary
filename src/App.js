@@ -1,49 +1,36 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import "react-toastify/dist/ReactToastify.css";
-
-import Signup from "./Components/signup";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Navbar from "./Components/Navbar";
+import Dashboard from "./Components/Dashboard";
+import TrackOrders from "./Components/TrackOrders";
+import MyOrders from "./Components/Myorders";
+import Services from "./Components/ServiceSelection";
+import Profile from "./Components/Profile";
 import Login from "./Components/login";
-import ForgotPassword from "./Components/ForgotPassword";
-import Dashboard from "./Components/dashboard"; // Capital D
-import ServiceSelection from "./Components/ServiceSelection";
+import Signup from "./Components/signup";
 import OrderDetails from "./Components/OrderDetails";
 import Payment from "./Components/Payment";
-import MyOrders from "./Components/Myorders"; // New Page
+import ForgotPassword from "./Components/ForgotPassword";
 
-function App() {
+const App = () => {
   return (
     <Router>
+      <Navbar />
       <Routes>
-        {/* Default route */}
-        <Route path="/" element={<Navigate to="/signup" />} />
-
-        {/* Auth Pages */}
-        <Route path="/signup" element={<Signup />} />
+        {/* Default first page = Signup */}
+        <Route path="/" element={<Signup />} />
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-
-        {/* Dashboard */}
         <Route path="/dashboard" element={<Dashboard />} />
-
-        {/* Service & Order Pages */}
-        <Route path="/service-selection" element={<ServiceSelection />} />
-        <Route path="/order-details" element={<OrderDetails />} />
+        <Route path="/services" element={<Services />} />
+        <Route path="/track-orders" element={<TrackOrders />} />
+        <Route path="/my-orders" element={<MyOrders />} />
+        <Route path="/OrderDetails" element={<OrderDetails/>} />
         <Route path="/payment" element={<Payment />} />
-        <Route path="/my-orders" element={<MyOrders />} /> {/* New route */}
-
-        {/* Catch-all 404 Page */}
-        <Route
-          path="*"
-          element={
-            <h1 className="text-center mt-20 text-3xl font-bold">
-              404 - Page Not Found
-            </h1>
-          }
-        />
+        <Route path="/profile" element={<Profile />} />
       </Routes>
     </Router>
   );
-}
+};
 
 export default App;

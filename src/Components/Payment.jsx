@@ -14,11 +14,17 @@ const Payment = () => {
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [totalPrice, setTotalPrice] = useState(0);
+
+  // State for payment method (Card or UPI)
+  const [paymentMethod, setPaymentMethod] = useState("card");
+
   const [cardData, setCardData] = useState({
     cardNumber: "",
     expiryDate: "",
     cvv: "",
   });
+
+  const [upiId, setUpiId] = useState("");
 
   useEffect(() => {
     const storedOrder = localStorage.getItem("currentOrder");
@@ -57,7 +63,7 @@ const Payment = () => {
     setCardData({ ...cardData, [name]: value });
   };
 
-  const validatePayment = () => {
+  const validateCardPayment = () => {
     const { cardNumber, expiryDate, cvv } = cardData;
 
     const cleanCardNumber = cardNumber.replace(/\s/g, "");
@@ -90,18 +96,27 @@ const Payment = () => {
     return true;
   };
 
+  const validateUpiPayment = () => {
+    if (!/^[\w.-]+@[\w.-]+$/.test(upiId)) {
+      toast.error("Please enter a valid UPI ID (e.g. example@upi).");
+      return false;
+    }
+    return true;
+  };
+
   const handlePayment = (e) => {
     e.preventDefault();
 
-    if (!validatePayment()) return;
+    // Validate based on method
+    if (paymentMethod === "card" && !validateCardPayment()) return;
+    if (paymentMethod === "upi" && !validateUpiPayment()) return;
 
     const updatedOrder = { ...order, status: "Paid" };
     localStorage.setItem("currentOrder", JSON.stringify(updatedOrder));
 
-    // Show toast and navigate after it closes
     toast.success("Payment successful! Redirecting to service selection...", {
-      autoClose: 1500, // show toast for 1.5 seconds
-      onClose: () => navigate("/service-selection"),
+      autoClose: 1500,
+      onClose: () => navigate("/services"),
     });
   };
 
@@ -118,6 +133,7 @@ const Payment = () => {
             Complete Payment
           </h2>
 
+          {/* Order Summary */}
           <div className="mb-8 p-6 bg-gray-50 rounded-lg">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">
               Order Summary
@@ -129,88 +145,152 @@ const Payment = () => {
                     {details.quantity} {details.unit} of{" "}
                     {pricingData[serviceId]?.unit === "kg"
                       ? "Wash & Fold"
-                      : pricingData[serviceId]?.unit === "items" && serviceId === "dry-cleaning"
+                      : pricingData[serviceId]?.unit === "items" &&
+                        serviceId === "dry-cleaning"
                       ? "Dry Cleaning"
                       : "Ironing"}
                   </span>
                   <span className="font-medium text-gray-900">
-                    ₹{(details.quantity * pricingData[serviceId]?.pricePerUnit).toFixed(2)}
+                    ₹
+                    {(
+                      details.quantity *
+                      pricingData[serviceId]?.pricePerUnit
+                    ).toFixed(2)}
                   </span>
                 </li>
               ))}
             </ul>
             <div className="mt-4 flex justify-between pt-4 border-t border-gray-200">
-              <span className="text-lg font-bold text-gray-800">Total Amount:</span>
-              <span className="text-2xl font-bold text-blue-600">₹{totalPrice.toFixed(2)}</span>
+              <span className="text-lg font-bold text-gray-800">
+                Total Amount:
+              </span>
+              <span className="text-2xl font-bold text-blue-600">
+                ₹{totalPrice.toFixed(2)}
+              </span>
             </div>
           </div>
 
-          <form onSubmit={handlePayment} className="space-y-6">
-            <div>
-              <label
-                htmlFor="cardNumber"
-                className="block text-sm font-medium text-gray-700"
+          {/* Payment Method Selection */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select Payment Method
+            </label>
+            <div className="flex gap-4">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("card")}
+                className={`px-4 py-2 rounded-md border ${
+                  paymentMethod === "card"
+                    ? "bg-blue-600 text-white"
+                    : "bg-white text-gray-700"
+                }`}
               >
-                Card Number
-              </label>
-              <input
-                type="text"
-                name="cardNumber"
-                id="cardNumber"
-                value={cardData.cardNumber}
-                onChange={handleCardChange}
-                placeholder="0000 0000 0000 0000"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3"
-                maxLength="19"
-                required
-              />
+                Card
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("upi")}
+                className={`px-4 py-2 rounded-md border ${
+                  paymentMethod === "upi"
+                    ? "bg-blue-600 text-white"
+                    : "bg-white text-gray-700"
+                }`}
+              >
+                UPI
+              </button>
             </div>
+          </div>
 
-            <div className="grid grid-cols-2 gap-6">
+          {/* Payment Form */}
+          <form onSubmit={handlePayment} className="space-y-6">
+            {paymentMethod === "card" ? (
+              <>
+                <div>
+                  <label
+                    htmlFor="cardNumber"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Card Number
+                  </label>
+                  <input
+                    type="text"
+                    name="cardNumber"
+                    id="cardNumber"
+                    value={cardData.cardNumber}
+                    onChange={handleCardChange}
+                    placeholder="0000 0000 0000 0000"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3"
+                    maxLength="19"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label
+                      htmlFor="expiryDate"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Expiry Date (MM/YY)
+                    </label>
+                    <input
+                      type="text"
+                      name="expiryDate"
+                      id="expiryDate"
+                      value={cardData.expiryDate}
+                      onChange={handleCardChange}
+                      placeholder="MM/YY"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3"
+                      maxLength="5"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="cvv"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      CVV
+                    </label>
+                    <input
+                      type="text"
+                      name="cvv"
+                      id="cvv"
+                      value={cardData.cvv}
+                      onChange={handleCardChange}
+                      placeholder="123"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3"
+                      maxLength="3"
+                      required
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
               <div>
                 <label
-                  htmlFor="expiryDate"
+                  htmlFor="upiId"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  Expiry Date (MM/YY)
+                  Enter UPI ID
                 </label>
                 <input
                   type="text"
-                  name="expiryDate"
-                  id="expiryDate"
-                  value={cardData.expiryDate}
-                  onChange={handleCardChange}
-                  placeholder="MM/YY"
+                  name="upiId"
+                  id="upiId"
+                  value={upiId}
+                  onChange={(e) => setUpiId(e.target.value)}
+                  placeholder="example@upi"
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3"
-                  maxLength="5"
                   required
                 />
               </div>
-              <div>
-                <label
-                  htmlFor="cvv"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  CVV
-                </label>
-                <input
-                  type="text"
-                  name="cvv"
-                  id="cvv"
-                  value={cardData.cvv}
-                  onChange={handleCardChange}
-                  placeholder="123"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3"
-                  maxLength="3"
-                  required
-                />
-              </div>
-            </div>
+            )}
 
             <div className="flex justify-between items-center pt-4">
               <button
                 type="button"
-                onClick={() => navigate("/order-details")}
+                onClick={() => navigate("/OrderDetails")}
                 className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 font-medium hover:bg-gray-50 transition"
               >
                 Back to Order
