@@ -19,50 +19,46 @@ const ForgotPassword = () => {
     return Math.floor(1000 + Math.random() * 9000).toString();
   };
 
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validateMobile = (mobile) => {
+    const mobileRegex = /^[6-9]\d{9}$/;
+    return mobileRegex.test(mobile);
+  };
+
   const handleSendOtp = (e) => {
     e.preventDefault();
     
-    if (!formData.emailOrMobile) {
+    // Trim whitespace
+    const input = formData.emailOrMobile.trim();
+    
+    if (!input) {
       toast.error("Please enter your email or mobile number!");
       return;
     }
 
-    // Check if user exists in localStorage
-    const userData = localStorage.getItem("user");
-    if (!userData) {
-      toast.error("No account found with this email/mobile number.");
+    // Validate email format
+    const isEmail = validateEmail(input);
+    const isMobile = validateMobile(input);
+
+    if (!isEmail && !isMobile) {
+      toast.error("Please enter a valid email address or 10-digit mobile number!");
       return;
     }
 
-    const user = JSON.parse(userData);
-    
-    // Determine if the input is email or mobile
-    const isEmail = formData.emailOrMobile.includes('@');
-    const isMobile = /^\d+$/.test(formData.emailOrMobile);
-    
-    // Validate based on how user signed up
-    if (user.isMobile) {
-      // User signed up with mobile number
-      if (!isMobile) {
-        toast.error("Please enter your mobile number");
-        return;
-      }
-      
-      if (user.nameOrMobile !== formData.emailOrMobile) {
-        toast.error("No account found with this mobile number!");
-        return;
-      }
-    } else {
-      // User signed up with email
-      if (!isEmail) {
-        toast.error("Please enter your email address");
-        return;
-      }
-      
-      if (user.email !== formData.emailOrMobile) {
-        toast.error("No account found with this email address!");
-        return;
-      }
+    // Check if user exists in localStorage
+    const users = JSON.parse(localStorage.getItem("users")) || [];
+    const user = users.find(u => 
+      (isEmail && u.email === input) || 
+      (isMobile && u.nameOrMobile === input)
+    );
+
+    if (!user) {
+      toast.error("No account found with this email/mobile number!");
+      return;
     }
 
     // Generate and store OTP
@@ -79,12 +75,24 @@ const ForgotPassword = () => {
   const handleVerifyOtp = (e) => {
     e.preventDefault();
     
-    if (!formData.otp) {
+    const otp = formData.otp.trim();
+    
+    if (!otp) {
       toast.error("Please enter the OTP!");
       return;
     }
 
-    if (formData.otp !== generatedOtp) {
+    if (otp.length !== 4) {
+      toast.error("OTP must be exactly 4 digits!");
+      return;
+    }
+
+    if (!/^\d{4}$/.test(otp)) {
+      toast.error("OTP must contain only numbers!");
+      return;
+    }
+
+    if (otp !== generatedOtp) {
       toast.error("Invalid OTP! Please try again.");
       return;
     }
@@ -93,30 +101,82 @@ const ForgotPassword = () => {
     setStep(3); // Move to password reset step
   };
 
+  const validatePassword = (password) => {
+    const minLength = 6;
+    const maxLength = 15;
+    
+    if (password.length < minLength) {
+      return `Password must be at least ${minLength} characters long!`;
+    }
+    
+    if (password.length > maxLength) {
+      return `Password must be no more than ${maxLength} characters!`;
+    }
+    
+    // Check for at least one letter
+    if (!/[a-zA-Z]/.test(password)) {
+      return "Password must contain at least one letter!";
+    }
+    
+    // Check for at least one number
+    if (!/\d/.test(password)) {
+      return "Password must contain at least one number!";
+    }
+    
+    // Check for at least one special character
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+      return "Password must contain at least one special character!";
+    }
+    
+    return null; // Valid password
+  };
+
   const handleResetPassword = (e) => {
     e.preventDefault();
     
-    if (!formData.newPassword || !formData.confirmPassword) {
+    const newPassword = formData.newPassword.trim();
+    const confirmPassword = formData.confirmPassword.trim();
+    
+    if (!newPassword || !confirmPassword) {
       toast.error("Please fill in all password fields!");
       return;
     }
 
-    if (formData.newPassword.length > 10) {
-      toast.error("Password must be up to 10 characters!");
+    // Validate new password
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) {
+      toast.error(passwordError);
       return;
     }
 
-    if (formData.newPassword !== formData.confirmPassword) {
+    if (newPassword !== confirmPassword) {
       toast.error("Passwords do not match!");
       return;
     }
 
-    // Update password in localStorage
-    const userData = localStorage.getItem("user");
-    if (userData) {
-      const user = JSON.parse(userData);
-      user.password = formData.newPassword;
-      localStorage.setItem("user", JSON.stringify(user));
+    // Get the user from the users array (not the current logged-in user)
+    const users = JSON.parse(localStorage.getItem("users")) || [];
+    const userIndex = users.findIndex(u => 
+      u.email === formData.emailOrMobile || u.nameOrMobile === formData.emailOrMobile
+    );
+
+    if (userIndex === -1) {
+      toast.error("User not found!");
+      return;
+    }
+
+    // Update password in users array
+    users[userIndex].password = newPassword;
+    localStorage.setItem("users", JSON.stringify(users));
+
+    // Also update current user if logged in
+    const currentUser = localStorage.getItem("user");
+    if (currentUser) {
+      const user = JSON.parse(currentUser);
+      if (user.email === formData.emailOrMobile || user.nameOrMobile === formData.emailOrMobile) {
+        user.password = newPassword;
+        localStorage.setItem("user", JSON.stringify(user));
+      }
     }
 
     toast.success("Password reset successfully!");
@@ -147,12 +207,15 @@ const ForgotPassword = () => {
                 <input
                   type="text"
                   name="emailOrMobile"
-                  placeholder="Enter your email or mobile number"
+                  placeholder="Enter your email or 10-digit mobile number"
                   value={formData.emailOrMobile}
                   onChange={handleChange}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter a valid email address or 10-digit mobile number starting with 6-9
+                </p>
               </div>
 
               <button
@@ -176,11 +239,17 @@ const ForgotPassword = () => {
                   name="otp"
                   placeholder="Enter 4-digit OTP"
                   value={formData.otp}
-                  onChange={handleChange}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, ''); // Only allow digits
+                    setFormData({ ...formData, otp: value });
+                  }}
                   maxLength={4}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-xl"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-xl tracking-widest"
                   required
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter the 4-digit code sent to your email/mobile
+                </p>
               </div>
 
               <button
@@ -214,13 +283,16 @@ const ForgotPassword = () => {
                 <input
                   type="password"
                   name="newPassword"
-                  placeholder="Enter new password (max 10 characters)"
+                  placeholder="Enter new password (6-15 characters)"
                   value={formData.newPassword}
                   onChange={handleChange}
-                  maxLength={10}
+                  maxLength={15}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Password must be 6-15 characters with at least one letter, number, and special character
+                </p>
               </div>
 
               <div>
@@ -231,10 +303,13 @@ const ForgotPassword = () => {
                   placeholder="Confirm your new password"
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  maxLength={10}
+                  maxLength={15}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Re-enter your password to confirm
+                </p>
               </div>
 
               <button

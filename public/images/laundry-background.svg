@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f8fafc;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#e2e8f0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#cbd5e1;stop-opacity:1" />
+    </linearGradient>
+    <pattern id="laundryPattern" x="0" y="0" width="200" height="200" patternUnits="userSpaceOnUse">
+      <!-- Clothes hangers -->
+      <g opacity="0.1">
+        <rect x="20" y="40" width="15" height="25" fill="#64748b" rx="2"/>
+        <rect x="45" y="45" width="12" height="20" fill="#64748b" rx="2"/>
+        <rect x="70" y="42" width="18" height="28" fill="#64748b" rx="2"/>
+        <rect x="95" y="47" width="14" height="22" fill="#64748b" rx="2"/>
+        <rect x="120" y="44" width="16" height="26" fill="#64748b" rx="2"/>
+        <rect x="145" y="46" width="13" height="24" fill="#64748b" rx="2"/>
+        <rect x="170" y="43" width="17" height="27" fill="#64748b" rx="2"/>
+      </g>
+      
+      <!-- Clothes items -->
+      <g opacity="0.08">
+        <circle cx="30" cy="80" r="12" fill="#3b82f6"/>
+        <circle cx="60" cy="85" r="10" fill="#8b5cf6"/>
+        <circle cx="90" cy="82" r="14" fill="#10b981"/>
+        <circle cx="120" cy="87" r="11" fill="#f59e0b"/>
+        <circle cx="150" cy="84" r="13" fill="#ef4444"/>
+        <circle cx="180" cy="86" r="9" fill="#06b6d4"/>
+      </g>
+      
+      <!-- Clotheslines -->
+      <g opacity="0.06">
+        <path d="M10 100 Q50 90 90 100 T170 100" stroke="#64748b" stroke-width="3" fill="none"/>
+        <path d="M15 120 Q55 110 95 120 T175 120" stroke="#64748b" stroke-width="3" fill="none"/>
+        <path d="M20 140 Q60 130 100 140 T180 140" stroke="#64748b" stroke-width="3" fill="none"/>
+      </g>
+      
+      <!-- Washing machine bubbles -->
+      <g opacity="0.05">
+        <circle cx="50" cy="160" r="3" fill="#0ea5e9"/>
+        <circle cx="70" cy="155" r="2" fill="#0ea5e9"/>
+        <circle cx="90" cy="165" r="4" fill="#0ea5e9"/>
+        <circle cx="110" cy="158" r="2.5" fill="#0ea5e9"/>
+        <circle cx="130" cy="162" r="3.5" fill="#0ea5e9"/>
+        <circle cx="150" cy="157" r="2" fill="#0ea5e9"/>
+        <circle cx="170" cy="164" r="3" fill="#0ea5e9"/>
+      </g>
+    </pattern>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="url(#bgGradient)"/>
+  <rect width="100%" height="100%" fill="url(#laundryPattern)"/>
+  
+  <!-- Subtle overlay -->
+  <rect width="100%" height="100%" fill="#ffffff" opacity="0.3"/>
+</svg>
