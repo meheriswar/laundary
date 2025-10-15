@@ -14,25 +14,39 @@ const Profile = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   useEffect(() => {
-    // ✅ fetch logged-in user
+    // ✅ Fetch logged-in user
     const loggedUser = JSON.parse(localStorage.getItem("user"));
     if (!loggedUser) {
       toast.error("No user found! Please login.");
       navigate("/login");
+      return;
     } else {
       setUser(loggedUser);
     }
 
-    const allOrders = JSON.parse(localStorage.getItem("allOrders")) || [];
-    setOrders(allOrders);
+    // ✅ Always clear old order data on profile load (after login)
+    localStorage.removeItem("allOrders");
+
+    // Just in case, reset local state orders
+    setOrders([]);
   }, [navigate]);
 
+  // ✅ LOGOUT FUNCTION — clears all old details
   const handleLogout = () => {
     toast.info("Logging out...");
-    localStorage.removeItem("user"); // clear session
+
+    // 🧹 Clear all relevant data
+    localStorage.removeItem("user");
+    localStorage.removeItem("allOrders");
+
+    // You can comment this line if you want to keep all registered users
+    // localStorage.removeItem("users");
+
+    // ✅ Redirect after short delay
     setTimeout(() => {
+      toast.success("Logged out successfully!");
       navigate("/login");
-    }, 500);
+    }, 700);
   };
 
   const handlePasswordChange = () => {
@@ -51,7 +65,7 @@ const Profile = () => {
       return;
     }
 
-    // update password in localStorage
+    // ✅ Update password in localStorage
     const users = JSON.parse(localStorage.getItem("users")) || [];
     const updatedUsers = users.map((u) =>
       u.email === user.email || u.nameOrMobile === user.nameOrMobile
@@ -64,7 +78,7 @@ const Profile = () => {
     localStorage.setItem("user", JSON.stringify(updatedUser));
     setUser(updatedUser);
 
-    // clear fields
+    // Clear form fields
     setOldPassword("");
     setNewPassword("");
     setConfirmPassword("");
@@ -83,12 +97,24 @@ const Profile = () => {
               onClick={() => navigate(-1)}
               className="px-4 py-2 bg-gray-500 dark:bg-gray-600 text-white rounded-lg hover:bg-gray-600 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center space-x-2"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
               </svg>
               <span>Back</span>
             </button>
-            <h1 className="text-3xl font-bold text-blue-600 dark:text-blue-400">Profile</h1>
+            <h1 className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+              Profile
+            </h1>
           </div>
           <button
             onClick={handleLogout}
@@ -100,27 +126,37 @@ const Profile = () => {
 
         {/* User Info */}
         <div className="mb-6 p-6 border border-gray-300 dark:border-gray-600 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-gray-600">
-          <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">User Information</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
+            User Information
+          </h2>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Login Name/Email:</label>
+              <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                Login Name/Email:
+              </label>
               <p className="text-lg font-semibold text-gray-800 dark:text-gray-200">
                 {user?.email ? user.email : user?.nameOrMobile}
               </p>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Password:</label>
+              <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                Password:
+              </label>
               <p className="text-lg font-mono text-gray-800 dark:text-gray-200">
                 {"*".repeat(user?.password?.length || 0)}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Password length: {user?.password?.length || 0} characters</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Password length: {user?.password?.length || 0} characters
+              </p>
             </div>
           </div>
         </div>
 
         {/* Change Password */}
         <div className="mb-6 p-6 border border-gray-300 dark:border-gray-600 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-gray-700 dark:to-gray-600">
-          <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Change Password</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
+            Change Password
+          </h2>
           <div className="max-w-md space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -169,9 +205,13 @@ const Profile = () => {
 
         {/* Orders */}
         <div>
-          <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Order History</h2>
+          <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
+            Order History
+          </h2>
           {orders.length === 0 ? (
-            <p className="text-gray-600 dark:text-gray-400">No orders placed yet.</p>
+            <p className="text-gray-600 dark:text-gray-400">
+              No orders placed yet.
+            </p>
           ) : (
             <div className="space-y-4">
               {orders.map((order, idx) => (

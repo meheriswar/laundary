@@ -17,7 +17,6 @@ const App = () => {
     <Router>
       <Navbar />
       <Routes>
-        {/* Default first page = Signup */}
         <Route path="/" element={<Signup />} />
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -25,7 +24,7 @@ const App = () => {
         <Route path="/services" element={<Services />} />
         <Route path="/track-orders" element={<TrackOrders />} />
         <Route path="/my-orders" element={<MyOrders />} />
-        <Route path="/OrderDetails" element={<OrderDetails/>} />
+        <Route path="/orderdetails" element={<OrderDetails />} />
         <Route path="/payment" element={<Payment />} />
         <Route path="/profile" element={<Profile />} />
       </Routes>
